@@ -53,6 +53,9 @@ export default function ReleaseTrackerApp() {
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<number | null>(null);
 
+  /* NEW: toggle for Monthly Executive Summary */
+  const [showMonthlySummary, setShowMonthlySummary] = useState<boolean>(false);
+
   const storageKey = `releaseTracker:${selectedYear}`;
 
   /* Load data */
@@ -151,25 +154,17 @@ export default function ReleaseTrackerApp() {
     URL.revokeObjectURL(url);
   };
 
-  /* ======================================================
-     ADDITION 1: Monthly Executive Summary (READ-ONLY)
-  ====================================================== */
+  /* Monthly Executive Summary (derived, unchanged) */
   const monthlyExecutiveSummary = MONTHS.map((month, index) => {
     const items = baseFiltered.filter(r => new Date(r.date).getMonth() === index);
     const byType = releaseTypes.map(rt => ({
       name: rt.name,
       count: items.filter(r => r.type === rt.id).length
     }));
-    return {
-      month,
-      total: items.length,
-      byType
-    };
+    return { month, total: items.length, byType };
   });
 
-  /* ======================================================
-     ADDITION 2: Product-wise Monthly Table (READ-ONLY)
-  ====================================================== */
+  /* Product-wise Monthly Table (derived, unchanged) */
   const products = Array.from(new Set(baseFiltered.map(r => r.product)));
 
   return (
@@ -231,22 +226,30 @@ export default function ReleaseTrackerApp() {
         {monthFilter !== null && <button onClick={() => setMonthFilter(null)}>Clear Month</button>}
       </div>
 
-      {/* ================================
-          Monthly Executive Summary (NEW)
-      ================================ */}
-      <h2>Monthly Executive Summary</h2>
-      {monthlyExecutiveSummary.map(m => (
-        <div key={m.month} style={{ border: "1px solid #ccc", padding: 8, marginBottom: 8 }}>
-          <strong>{m.month} — Total: {m.total}</strong>
-          <div style={{ fontSize: 12 }}>
-            {m.byType.map(t => `${t.name}: ${t.count}`).join(" | ")}
-          </div>
-        </div>
-      ))}
+      {/* Toggle for Monthly Executive Summary */}
+      <button
+        style={{ marginBottom: 16 }}
+        onClick={() => setShowMonthlySummary(p => !p)}
+      >
+        {showMonthlySummary ? "Hide Monthly Executive Summary" : "Show Monthly Executive Summary"}
+      </button>
 
-      {/* ================================
-          Product-wise Monthly Table (NEW)
-      ================================ */}
+      {/* Monthly Executive Summary (conditionally visible) */}
+      {showMonthlySummary && (
+        <>
+          <h2>Monthly Executive Summary</h2>
+          {monthlyExecutiveSummary.map(m => (
+            <div key={m.month} style={{ border: "1px solid #ccc", padding: 8, marginBottom: 8 }}>
+              <strong>{m.month} — Total: {m.total}</strong>
+              <div style={{ fontSize: 12 }}>
+                {m.byType.map(t => `${t.name}: ${t.count}`).join(" | ")}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Product-wise Monthly Table (always visible, unchanged) */}
       <h2>Product-wise Monthly View</h2>
       <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
@@ -269,7 +272,7 @@ export default function ReleaseTrackerApp() {
         </tbody>
       </table>
 
-      {/* Results (UNCHANGED) */}
+      {/* Results (unchanged) */}
       {monthFilter !== null ? (
         <div>
           <h3>{MONTHS[monthFilter]} {selectedYear}</h3>
