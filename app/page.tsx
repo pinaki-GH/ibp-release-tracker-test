@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 
 /* -----------------------------
    Static reference data
@@ -17,8 +17,8 @@ const releaseTypes = [
 ];
 
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
 ];
 
 interface ReleaseItem {
@@ -32,17 +32,10 @@ interface ReleaseItem {
 export default function ReleaseTrackerApp() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-
   const [releases, setReleases] = useState<ReleaseItem[]>([]);
   const [editingRelease, setEditingRelease] = useState<ReleaseItem | null>(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    product: "",
-    date: "",
-    type: ""
-  });
-
+  const [form, setForm] = useState({ name: "", product: "", date: "", type: "" });
   const [productFilter, setProductFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<number | null>(null);
@@ -51,8 +44,8 @@ export default function ReleaseTrackerApp() {
 
   /* Load */
   useEffect(() => {
-    const raw = localStorage.getItem(storageKey);
-    setReleases(raw ? JSON.parse(raw) : []);
+    const stored = localStorage.getItem(storageKey);
+    setReleases(stored ? JSON.parse(stored) : []);
   }, [storageKey]);
 
   /* Persist */
@@ -65,90 +58,78 @@ export default function ReleaseTrackerApp() {
     if (!form.name || !form.date || !form.type) return;
 
     if (editingRelease) {
-      setReleases(prev =>
-        prev.map(r => r.id === editingRelease.id ? { ...editingRelease, ...form } : r)
+      setReleases(r =>
+        r.map(x => (x.id === editingRelease.id ? { ...editingRelease, ...form } : x))
       );
       setEditingRelease(null);
     } else {
-      setReleases(prev => [...prev, { ...form, id: Date.now() }]);
+      setReleases(r => [...r, { ...form, id: Date.now() }]);
     }
 
     setForm({ name: "", product: "", date: "", type: "" });
   };
 
-  /* Delete */
   const deleteRelease = (id: number) => {
-    if (confirm("Delete this release?")) {
-      setReleases(prev => prev.filter(r => r.id !== id));
+    if (window.confirm("Delete this release?")) {
+      setReleases(r => r.filter(x => x.id !== id));
     }
   };
 
-  /* Base filtered */
-  const baseFiltered = useMemo(() => {
-    return releases.filter(r => {
-      if (new Date(r.date).getFullYear() !== selectedYear) return false;
-      if (productFilter && !r.product.toLowerCase().includes(productFilter.toLowerCase())) return false;
-      return true;
-    });
-  }, [releases, selectedYear, productFilter]);
+  /* Base filtered (year + product) */
+  const baseFiltered = releases.filter(r => {
+    if (new Date(r.date).getFullYear() !== selectedYear) return false;
+    if (productFilter && !r.product.toLowerCase().includes(productFilter.toLowerCase())) return false;
+    return true;
+  });
 
   /* Final filtered */
-  const filteredReleases = useMemo(() => {
-    return baseFiltered.filter(r => {
-      if (typeFilter.length && !typeFilter.includes(r.type)) return false;
-      if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
-      return true;
-    });
-  }, [baseFiltered, typeFilter, monthFilter]);
+  const filtered = baseFiltered.filter(r => {
+    if (typeFilter.length && !typeFilter.includes(r.type)) return false;
+    if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
+    return true;
+  });
 
   /* Counts */
   const totalYearCount = baseFiltered.length;
 
-  const releaseTypeCounts = useMemo(() => {
-    const acc: Record<string, number> = {};
-    baseFiltered.forEach(r => {
-      acc[r.type] = (acc[r.type] || 0) + 1;
-    });
-    return acc;
-  }, [baseFiltered]);
+  const releaseTypeCounts = baseFiltered.reduce<Record<string, number>>((a, r) => {
+    a[r.type] = (a[r.type] || 0) + 1;
+    return a;
+  }, {});
 
-  /* Monthly Executive Summary */
-  const monthlySummary = useMemo(() => {
-    if (monthFilter === null) return null;
-    const byType: Record<string, number> = {};
-    filteredReleases.forEach(r => {
-      byType[r.type] = (byType[r.type] || 0) + 1;
-    });
-    return { total: filteredReleases.length, byType };
-  }, [filteredReleases, monthFilter]);
+  /* -----------------------------
+     Monthly Executive Summary
+  ------------------------------ */
+  const monthlySummary = MONTHS.map((m, idx) => {
+    const monthItems = baseFiltered.filter(r => new Date(r.date).getMonth() === idx);
+    const byType = releaseTypes.map(rt => ({
+      ...rt,
+      count: monthItems.filter(r => r.type === rt.id).length
+    }));
+    return { month: m, total: monthItems.length, byType };
+  });
 
-  /* Product-wise Monthly */
-  const productMonthly = useMemo(() => {
-    if (monthFilter === null) return [];
-    const map: Record<string, number> = {};
-    filteredReleases.forEach(r => {
-      map[r.product] = (map[r.product] || 0) + 1;
-    });
-    return Object.entries(map).map(([product, count]) => ({ product, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [filteredReleases, monthFilter]);
+  /* -----------------------------
+     Product-wise Monthly Table
+  ------------------------------ */
+  const products = Array.from(new Set(baseFiltered.map(r => r.product)));
 
   return (
     <div style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>IBP Release Tracker</h1>
 
       {/* Year */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <strong>Year:</strong>
-        <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
-          {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(y => (
+      <div style={{ marginBottom: 12 }}>
+        <strong>Year:</strong>{" "}
+        <select value={selectedYear} onChange={e => setSelectedYear(+e.target.value)}>
+          {[currentYear - 1, currentYear, currentYear + 1].map(y => (
             <option key={y}>{y}</option>
           ))}
         </select>
       </div>
 
-      {/* Add / Edit */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, marginBottom: 24 }}>
+      {/* Add */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
         <input placeholder="Release Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         <input placeholder="Product / App" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })} />
         <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
@@ -159,31 +140,26 @@ export default function ReleaseTrackerApp() {
         <button onClick={saveRelease}>{editingRelease ? "Update" : "Add"}</button>
       </div>
 
+      {/* Filters */}
+      <div style={{ margin: "16px 0", display: "flex", gap: 8 }}>
+        <input placeholder="Filter by product" value={productFilter} onChange={e => setProductFilter(e.target.value)} />
+        <select value={monthFilter ?? ""} onChange={e => setMonthFilter(e.target.value ? +e.target.value : null)}>
+          <option value="">Filter by month</option>
+          {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+        </select>
+      </div>
+
       {/* Legend */}
       <div style={{ marginBottom: 16 }}>
-        <strong>Release Type Legend — Total: {totalYearCount}</strong>
-        <button
-          onClick={() => setTypeFilter([])}
-          style={{ marginLeft: 12 }}
-        >
-          Clear Release Type Filter
-        </button>
-
+        <strong>Total Releases: {totalYearCount}</strong>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {releaseTypes.map(rt => (
             <button
               key={rt.id}
               onClick={() =>
-                setTypeFilter(prev =>
-                  prev.includes(rt.id) ? prev.filter(t => t !== rt.id) : [...prev, rt.id]
-                )
+                setTypeFilter(p => p.includes(rt.id) ? p.filter(x => x !== rt.id) : [...p, rt.id])
               }
-              style={{
-                background: rt.color,
-                border: typeFilter.includes(rt.id) ? "2px solid #333" : "1px solid #ccc",
-                padding: "4px 8px",
-                cursor: "pointer"
-              }}
+              style={{ background: rt.color, padding: "4px 8px", border: "1px solid #ccc" }}
             >
               {rt.name} ({releaseTypeCounts[rt.id] || 0})
             </button>
@@ -191,111 +167,43 @@ export default function ReleaseTrackerApp() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-        <div style={{ position: "relative" }}>
-          <input
-            placeholder="Filter by product"
-            value={productFilter}
-            onChange={e => setProductFilter(e.target.value)}
-          />
-          {productFilter && (
-            <button
-              onClick={() => setProductFilter("")}
-              style={{
-                position: "absolute",
-                right: 4,
-                top: 2,
-                border: "none",
-                background: "transparent",
-                cursor: "pointer"
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        <select value={monthFilter ?? ""} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}>
-          <option value="">Filter by month</option>
-          {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-        </select>
-
-        {monthFilter !== null && (
-          <button onClick={() => setMonthFilter(null)}>
-            Clear Month Filter
-          </button>
-        )}
-      </div>
-
-      {/* Monthly Views */}
-      {monthFilter !== null && monthlySummary && (
-        <>
-          <h3>Executive Summary — {MONTHS[monthFilter]} {selectedYear}</h3>
-          <div>
-            <strong>Total Releases:</strong> {monthlySummary.total}
-            <ul>
-              {Object.entries(monthlySummary.byType).map(([type, count]) => {
-                const rt = releaseTypes.find(t => t.id === type);
-                return <li key={type}>{rt?.name}: {count}</li>;
-              })}
-            </ul>
+      {/* ===========================
+          Monthly Executive Summary
+      ============================ */}
+      <h2>Monthly Executive Summary</h2>
+      {monthlySummary.map(m => (
+        <div key={m.month} style={{ border: "1px solid #ccc", padding: 8, marginBottom: 8 }}>
+          <strong>{m.month} — Total: {m.total}</strong>
+          <div style={{ fontSize: 12 }}>
+            {m.byType.map(t => `${t.name}: ${t.count}`).join(" | ")}
           </div>
-
-          <h4>Product-wise Breakdown</h4>
-          <table style={{ borderCollapse: "collapse", marginBottom: 24 }}>
-            <thead>
-              <tr>
-                <th style={{ border: "1px solid #ccc", padding: 6 }}>Product</th>
-                <th style={{ border: "1px solid #ccc", padding: 6 }}>Releases</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productMonthly.map(p => (
-                <tr key={p.product}>
-                  <td style={{ border: "1px solid #ccc", padding: 6 }}>{p.product}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>{p.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filteredReleases.map(r => {
-            const rt = releaseTypes.find(t => t.id === r.type);
-            return (
-              <div
-                key={r.id}
-                style={{ background: rt?.color, padding: 8, border: "1px solid #ccc", marginBottom: 6 }}
-              >
-                <strong>{r.name}</strong> — {r.product} — {r.date}
-                <button style={{ marginLeft: 8 }} onClick={() => deleteRelease(r.id)}>Delete</button>
-              </div>
-            );
-          })}
-        </>
-      )}
-
-      {/* Calendar */}
-      {monthFilter === null && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
-          {MONTHS.map((month, index) => (
-            <div key={month} style={{ border: "1px solid #ccc", padding: 12 }}>
-              <strong>{month}</strong>
-              {filteredReleases.filter(r => new Date(r.date).getMonth() === index).map(r => {
-                const rt = releaseTypes.find(t => t.id === r.type);
-                return (
-                  <div
-                    key={r.id}
-                    style={{ background: rt?.color, marginTop: 6, padding: 6 }}
-                  >
-                    {r.name}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
         </div>
-      )}
+      ))}
+
+      {/* ===========================
+          Product-wise Monthly Table
+      ============================ */}
+      <h2>Product-wise Monthly View</h2>
+      <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Product</th>
+            {MONTHS.map(m => <th key={m}>{m}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {products.map(p => (
+            <tr key={p}>
+              <td><strong>{p}</strong></td>
+              {MONTHS.map((_, idx) => (
+                <td key={idx} style={{ textAlign: "center" }}>
+                  {baseFiltered.filter(r => r.product === p && new Date(r.date).getMonth() === idx).length}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
