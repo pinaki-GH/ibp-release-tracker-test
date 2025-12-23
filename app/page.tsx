@@ -47,6 +47,7 @@ export default function ReleaseTrackerApp() {
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<number | null>(null);
 
+  /* ✅ NEW: View toggle */
   const [viewMode, setViewMode] = useState<"tracker" | "executive">("tracker");
 
   const storageKey = `releaseTracker:${selectedYear}`;
@@ -72,64 +73,61 @@ export default function ReleaseTrackerApp() {
 
   /* Add / Update */
   const saveRelease = () => {
-    if (!form.name.trim()) {
-      alert("Release Name is required.");
-      return;
-    }
-    if (!form.product.trim()) {
-      alert("Product / App is required.");
-      return;
-    }
-    if (!form.date) {
-      alert("Release Date is required.");
-      return;
-    }
-    if (!form.type) {
-      alert("Release Type is required.");
-      return;
-    }
+  // ---- Mandatory field validation ----
+  if (!form.name.trim()) {
+    alert("Release Name is required.");
+    return;
+  }
 
-    const releaseYear = new Date(form.date).getFullYear();
-    if (releaseYear !== selectedYear) {
-      alert(`Release Date must be within the selected year (${selectedYear}).`);
-      return;
-    }
+  if (!form.product.trim()) {
+    alert("Product / App is required.");
+    return;
+  }
 
-    const normalizedName = form.name.trim().toLowerCase();
-    const duplicate = releases.some(
-      r =>
-        r.name.trim().toLowerCase() === normalizedName &&
-        r.id !== editingRelease?.id
+  if (!form.date) {
+    alert("Release Date is required.");
+    return;
+  }
+
+  if (!form.type) {
+    alert("Release Type is required.");
+    return;
+  }
+
+  // ---- Year validation ----
+  const releaseYear = new Date(form.date).getFullYear();
+  if (releaseYear !== selectedYear) {
+    alert(`Release Date must be within the selected year (${selectedYear}).`);
+    return;
+  }
+
+  // ---- Duplicate name validation (existing) ----
+  const normalizedName = form.name.trim().toLowerCase();
+  const duplicate = releases.some(r =>
+    r.name.trim().toLowerCase() === normalizedName &&
+    r.id !== editingRelease?.id
+  );
+
+  if (duplicate) {
+    alert("A release with this name already exists for this year.");
+    return;
+  }
+
+  // ---- Save logic (unchanged) ----
+  if (editingRelease) {
+    setReleases(prev =>
+      prev.map(r =>
+        r.id === editingRelease.id ? { ...editingRelease, ...form } : r
+      )
     );
-
-    if (duplicate) {
-      alert("A release with this name already exists for this year.");
-      return;
-    }
-
-    if (editingRelease) {
-      setReleases(prev =>
-        prev.map(r =>
-          r.id === editingRelease.id ? { ...editingRelease, ...form } : r
-        )
-      );
-      setEditingRelease(null);
-    } else {
-      setReleases(prev => [...prev, { ...form, id: Date.now() }]);
-    }
-
-    setForm({ name: "", product: "", date: "", type: "" });
-  };
-
-  /* ✅ NEW: Clear & Discard helpers */
-  const clearForm = () => {
-    setForm({ name: "", product: "", date: "", type: "" });
-  };
-
-  const discardEdit = () => {
     setEditingRelease(null);
-    setForm({ name: "", product: "", date: "", type: "" });
-  };
+  } else {
+    setReleases(prev => [...prev, { ...form, id: Date.now() }]);
+  }
+
+  setForm({ name: "", product: "", date: "", type: "" });
+};
+
 
   const deleteRelease = (id: number) => {
     if (!window.confirm("Are you sure you want to delete this release?")) return;
@@ -171,8 +169,22 @@ export default function ReleaseTrackerApp() {
     link.download = `IBP_Release_Tracker_${selectedYear}.csv`;
     link.click();
   };
+   
+/* ======================
+     FORM HELPERS (NEW)
+     ====================== */
+  const clearForm = () => {
+    setForm({ name: "", product: "", date: "", type: "" });
+  };
 
-  /* Executive Summary */
+  const discardEdit = () => {
+    setEditingRelease(null);
+    setForm({ name: "", product: "", date: "", type: "" });
+  };
+   
+  /* ======================
+     EXECUTIVE SUMMARY DATA
+     ====================== */
   const executiveSummary = MONTHS.map((month, idx) => {
     const items = baseFiltered.filter(r => new Date(r.date).getMonth() === idx);
     const total = items.length;
@@ -209,6 +221,9 @@ export default function ReleaseTrackerApp() {
         </button>
       </div>
 
+      {/* =====================
+         TRACKER VIEW (INTACT)
+         ===================== */}
       {viewMode === "tracker" && (
         <>
           {/* Year + Export */}
@@ -223,7 +238,7 @@ export default function ReleaseTrackerApp() {
           </div>
 
           {/* Add / Edit */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 24 }}>
             <input placeholder="Release Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input placeholder="Product / App" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })} />
             <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
@@ -231,21 +246,135 @@ export default function ReleaseTrackerApp() {
               <option value="">Release Type</option>
               {releaseTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.name}</option>)}
             </select>
+            <button onClick={saveRelease}>
+  {editingRelease ? "Update" : "Add"}
+</button>
 
-            <button onClick={saveRelease}>{editingRelease ? "Update" : "Add"}</button>
+{editingRelease ? (
+  <button
+    onClick={discardEdit}
+    style={{ background: "#f3f4f6" }}
+  >
+    Discard
+  </button>
+) : (
+  <button
+    onClick={clearForm}
+    style={{ background: "#f3f4f6" }}
+  >
+    Clear
+  </button>
+)}
 
-            {editingRelease ? (
-              <button onClick={discardEdit} style={{ background: "#f3f4f6" }}>
-                Discard
-              </button>
-            ) : (
-              <button onClick={clearForm} style={{ background: "#f3f4f6" }}>
-                Clear
-              </button>
-            )}
           </div>
 
-          {/* (rest of tracker + executive views unchanged) */}
+          {/* Legend */}
+          <div style={{ marginBottom: 16 }}>
+            <strong>Release Type Legend — Total releases: {totalYearCount}</strong>
+            <button onClick={() => setTypeFilter([])} style={{ marginLeft: 12 }}>
+              Clear Release Type Filter
+            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              {releaseTypes.map(rt => (
+                <button
+                  key={rt.id}
+                  onClick={() =>
+                    setTypeFilter(p => (p.includes(rt.id) ? p.filter(t => t !== rt.id) : [...p, rt.id]))
+                  }
+                  style={{ background: rt.color, padding: "4px 8px", border: "1px solid #ccc" }}
+                >
+                  {rt.name} ({releaseTypeCounts[rt.id] || 0})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
+            <input placeholder="Filter by product" value={productFilter} onChange={e => setProductFilter(e.target.value)} />
+            {productFilter && <button onClick={() => setProductFilter("")}>×</button>}
+            <select value={monthFilter ?? ""} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">Filter by month</option>
+              {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+            </select>
+            {monthFilter !== null && <button onClick={() => setMonthFilter(null)}>Clear Month</button>}
+          </div>
+
+          {/* Results */}
+          {monthFilter !== null ? (
+            <div>
+              <h3>{MONTHS[monthFilter]} {selectedYear}</h3>
+              {filteredReleases.map(r => {
+                const rt = releaseTypes.find(t => t.id === r.type);
+                return (
+                  <div key={r.id} style={{ background: rt?.color, padding: 8, marginTop: 6, border: "1px solid #ccc" }}>
+                    <strong>{r.name}</strong>
+                    <div style={{ fontSize: 12 }}>{r.product} • {r.date} • {rt?.name}</div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                      <button style={{ fontSize: 12 }} onClick={() => { setEditingRelease(r); setForm(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
+                      <button style={{ fontSize: 12, color: "red" }} onClick={() => deleteRelease(r.id)}>Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+              {MONTHS.map((month, index) => (
+                <div key={month} style={{ border: "1px solid #ccc", padding: 12 }}>
+                  <strong>{month} {selectedYear}</strong>
+                  {filteredReleases.filter(r => new Date(r.date).getMonth() === index).map(r => {
+                    const rt = releaseTypes.find(t => t.id === r.type);
+                    return (
+                      <div key={r.id} style={{ background: rt?.color, padding: 6, marginTop: 6 }}>
+                        <strong>{r.name}</strong>
+                        <div style={{ fontSize: 12 }}>{r.product} • {r.date}</div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                          <button style={{ fontSize: 12 }} onClick={() => { setEditingRelease(r); setForm(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
+                          <button style={{ fontSize: 12, color: "red" }} onClick={() => deleteRelease(r.id)}>Delete</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* =====================
+         EXECUTIVE VIEW (% BAR)
+         ===================== */}
+      {viewMode === "executive" && (
+        <>
+          <h2>Monthly Executive Summary</h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {executiveSummary.map(m => (
+              <div key={m.month} style={{ border: "1px solid #ccc", padding: 12 }}>
+                <strong>{m.month}</strong>
+                <div>Total Releases: {m.total}</div>
+
+                {m.byType.map(t => (
+                  <div key={t.id} style={{ marginTop: 6 }}>
+                    <div style={{ fontSize: 12 }}>
+                      {t.name}: {t.count} ({t.percent}%)
+                    </div>
+                    <div style={{ background: "#eee", height: 8 }}>
+                      <div
+                        style={{
+                          width: `${t.percent}%`,
+                          height: "100%",
+                          background: t.color
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </>
       )}
     </div>
