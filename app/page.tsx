@@ -43,15 +43,16 @@ export default function ReleaseTrackerApp() {
     type: ""
   });
 
-  const [productFilter, setProductFilter] = useState<string>("");
+  const [productFilter, setProductFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<number | null>(null);
 
-  /* NEW: View mode toggle (SAFE ADDITION) */
+  /* ✅ NEW: View toggle */
   const [viewMode, setViewMode] = useState<"tracker" | "executive">("tracker");
 
   const storageKey = `releaseTracker:${selectedYear}`;
 
+  /* Load data */
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
     if (stored) {
@@ -65,10 +66,12 @@ export default function ReleaseTrackerApp() {
     }
   }, [storageKey]);
 
+  /* Persist data */
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(releases));
   }, [releases, storageKey]);
 
+  /* Add / Update */
   const saveRelease = () => {
     if (!form.name || !form.date || !form.type) return;
 
@@ -89,6 +92,7 @@ export default function ReleaseTrackerApp() {
     setReleases(prev => prev.filter(r => r.id !== id));
   };
 
+  /* Filtering */
   const baseFiltered = releases.filter(r => {
     if (new Date(r.date).getFullYear() !== selectedYear) return false;
     if (productFilter && !r.product.toLowerCase().includes(productFilter.toLowerCase())) return false;
@@ -124,16 +128,25 @@ export default function ReleaseTrackerApp() {
     link.click();
   };
 
-  /* ==========================
-     EXECUTIVE VIEW (READ-ONLY)
-     ========================== */
-  const execSummary = MONTHS.map((month, idx) => {
+  /* ======================
+     EXECUTIVE SUMMARY DATA
+     ====================== */
+  const executiveSummary = MONTHS.map((month, idx) => {
     const items = baseFiltered.filter(r => new Date(r.date).getMonth() === idx);
-    const byType = releaseTypes.map(rt => {
-      const count = items.filter(r => r.type === rt.id).length;
-      return { ...rt, count };
-    });
-    return { month, total: items.length, byType };
+    const total = items.length;
+
+    const byType = releaseTypes
+      .map(rt => {
+        const count = items.filter(r => r.type === rt.id).length;
+        return {
+          ...rt,
+          count,
+          percent: total ? Math.round((count / total) * 100) : 0
+        };
+      })
+      .filter(t => t.count > 0);
+
+    return { month, total, byType };
   });
 
   return (
@@ -142,15 +155,23 @@ export default function ReleaseTrackerApp() {
 
       {/* View Toggle */}
       <div style={{ marginBottom: 16 }}>
-        <button onClick={() => setViewMode("tracker")} disabled={viewMode === "tracker"}>Tracker View</button>
-        <button onClick={() => setViewMode("executive")} disabled={viewMode === "executive"} style={{ marginLeft: 8 }}>
+        <button disabled={viewMode === "tracker"} onClick={() => setViewMode("tracker")}>
+          Tracker View
+        </button>
+        <button
+          disabled={viewMode === "executive"}
+          onClick={() => setViewMode("executive")}
+          style={{ marginLeft: 8 }}
+        >
           Executive View
         </button>
       </div>
 
+      {/* =====================
+         TRACKER VIEW (INTACT)
+         ===================== */}
       {viewMode === "tracker" && (
         <>
-          {/* ===== YOUR BASE UI (UNCHANGED) ===== */}
           {/* Year + Export */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <strong>Year:</strong>
@@ -249,17 +270,38 @@ export default function ReleaseTrackerApp() {
         </>
       )}
 
+      {/* =====================
+         EXECUTIVE VIEW (% BAR)
+         ===================== */}
       {viewMode === "executive" && (
         <>
           <h2>Monthly Executive Summary</h2>
-          {execSummary.map(m => (
-            <div key={m.month} style={{ border: "1px solid #ccc", padding: 12, marginBottom: 8 }}>
-              <strong>{m.month} — Total: {m.total}</strong>
-              <div style={{ fontSize: 12 }}>
-                {m.byType.filter(t => t.count > 0).map(t => `${t.name}: ${t.count}`).join(" | ")}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {executiveSummary.map(m => (
+              <div key={m.month} style={{ border: "1px solid #ccc", padding: 12 }}>
+                <strong>{m.month}</strong>
+                <div>Total Releases: {m.total}</div>
+
+                {m.byType.map(t => (
+                  <div key={t.id} style={{ marginTop: 6 }}>
+                    <div style={{ fontSize: 12 }}>
+                      {t.name}: {t.count} ({t.percent}%)
+                    </div>
+                    <div style={{ background: "#eee", height: 8 }}>
+                      <div
+                        style={{
+                          width: `${t.percent}%`,
+                          height: "100%",
+                          background: t.color
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </>
       )}
     </div>
