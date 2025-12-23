@@ -73,19 +73,61 @@ export default function ReleaseTrackerApp() {
 
   /* Add / Update */
   const saveRelease = () => {
-    if (!form.name || !form.date || !form.type) return;
+  // ---- Mandatory field validation ----
+  if (!form.name.trim()) {
+    alert("Release Name is required.");
+    return;
+  }
 
-    if (editingRelease) {
-      setReleases(prev =>
-        prev.map(r => (r.id === editingRelease.id ? { ...editingRelease, ...form } : r))
-      );
-      setEditingRelease(null);
-    } else {
-      setReleases(prev => [...prev, { ...form, id: Date.now() }]);
-    }
+  if (!form.product.trim()) {
+    alert("Product / App is required.");
+    return;
+  }
 
-    setForm({ name: "", product: "", date: "", type: "" });
-  };
+  if (!form.date) {
+    alert("Release Date is required.");
+    return;
+  }
+
+  if (!form.type) {
+    alert("Release Type is required.");
+    return;
+  }
+
+  // ---- Year validation ----
+  const releaseYear = new Date(form.date).getFullYear();
+  if (releaseYear !== selectedYear) {
+    alert(`Release Date must be within the selected year (${selectedYear}).`);
+    return;
+  }
+
+  // ---- Duplicate name validation (existing) ----
+  const normalizedName = form.name.trim().toLowerCase();
+  const duplicate = releases.some(r =>
+    r.name.trim().toLowerCase() === normalizedName &&
+    r.id !== editingRelease?.id
+  );
+
+  if (duplicate) {
+    alert("A release with this name already exists for this year.");
+    return;
+  }
+
+  // ---- Save logic (unchanged) ----
+  if (editingRelease) {
+    setReleases(prev =>
+      prev.map(r =>
+        r.id === editingRelease.id ? { ...editingRelease, ...form } : r
+      )
+    );
+    setEditingRelease(null);
+  } else {
+    setReleases(prev => [...prev, { ...form, id: Date.now() }]);
+  }
+
+  setForm({ name: "", product: "", date: "", type: "" });
+};
+
 
   const deleteRelease = (id: number) => {
     if (!window.confirm("Are you sure you want to delete this release?")) return;
