@@ -238,7 +238,16 @@ export default function ReleaseTrackerApp() {
           </div>
 
           {/* Add / Edit */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 24 }}>
+          <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "2fr 2fr 1.2fr 1.5fr 1fr 1fr",
+    gap: 8,
+    marginBottom: 24,
+    alignItems: "center"
+  }}
+>
+
             <input placeholder="Release Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input placeholder="Product / App" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })} />
             <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
