@@ -6,14 +6,14 @@ import { useState, useEffect } from "react";
    Static reference data
 ------------------------------ */
 const releaseTypes = [
-  { id: "new-feature", name: "New Feature", color: "#DBEAFE" },
-  { id: "enhancement", name: "Enhancement", color: "#E0E7FF" },
-  { id: "bug-fix", name: "Bug Fix", color: "#FEE2E2" },
-  { id: "dap-migration", name: "DAP Migration", color: "#F3E8FF" },
-  { id: "retirement", name: "Retirement", color: "#E5E7EB" },
-  { id: "platform-req", name: "Platform Requirement", color: "#CCFBF1" },
-  { id: "technical-debt", name: "Technical Debt", color: "#FEF9C3" },
-  { id: "planned", name: "Planned", color: "#DCFCE7" }
+  { id: "new-feature", name: "New Feature", color: "#2563EB" },        // Blue
+  { id: "enhancement", name: "Enhancement", color: "#7C3AED" },        // Purple
+  { id: "bug-fix", name: "Bug Fix", color: "#DC2626" },                // Red
+  { id: "dap-migration", name: "DAP Migration", color: "#0D9488" },    // Teal
+  { id: "retirement", name: "Retirement", color: "#374151" },          // Dark Gray
+  { id: "platform-req", name: "Platform Requirement", color: "#F59E0B" }, // Amber
+  { id: "technical-debt", name: "Technical Debt", color: "#9333EA" },  // Violet
+  { id: "planned", name: "Planned", color: "#16A34A" }                 // Green
 ];
 
 const MONTHS = [
