@@ -328,7 +328,7 @@ export default function ReleaseTrackerApp() {
               {filteredReleases.map(r => {
                 const rt = releaseTypes.find(t => t.id === r.type);
                 return (
-                  <div key={r.id} style={{ background: rt?.color, padding: 8, marginTop: 6, border: "1px solid #ccc" }}>
+                  <div key={r.id} style={{ background: rt?.color, color: rt ? getContrastingTextColor(rt.color) : "#000", padding: 8, marginTop: 6, border: "1px solid #ccc" }}>
                     <strong>{r.name}</strong>
                     <div style={{ fontSize: 12 }}>{r.product} • {r.date} • {rt?.name}</div>
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
@@ -347,7 +347,7 @@ export default function ReleaseTrackerApp() {
                   {filteredReleases.filter(r => new Date(r.date).getMonth() === index).map(r => {
                     const rt = releaseTypes.find(t => t.id === r.type);
                     return (
-                      <div key={r.id} style={{ background: rt?.color, padding: 6, marginTop: 6 }}>
+                      <div key={r.id} style={{ background: rt?.color, color: rt ? getContrastingTextColor(rt.color) : "#000", padding: 6, marginTop: 6 }}>
                         <strong>{r.name}</strong>
                         <div style={{ fontSize: 12 }}>{r.product} • {r.date}</div>
                         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
