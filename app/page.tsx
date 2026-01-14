@@ -302,7 +302,7 @@ export default function ReleaseTrackerApp() {
                   onClick={() =>
                     setTypeFilter(p => (p.includes(rt.id) ? p.filter(t => t !== rt.id) : [...p, rt.id]))
                   }
-                  style={{ background: rt.color, padding: "4px 8px", border: "1px solid #ccc" }}
+                  style={{ background: rt.color, color: getContrastingTextColor(rt.color), padding: "4px 8px", border: "1px solid #ccc" }}
                 >
                   {rt.name} ({releaseTypeCounts[rt.id] || 0})
                 </button>
