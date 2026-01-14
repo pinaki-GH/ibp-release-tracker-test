@@ -59,10 +59,12 @@ export default function ReleaseTrackerApp() {
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<number | null>(null);
 
+  /* ✅ NEW: View toggle */
   const [viewMode, setViewMode] = useState<"tracker" | "executive">("tracker");
 
   const storageKey = `releaseTracker:${selectedYear}`;
 
+  /* Load data */
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
     if (stored) {
@@ -76,45 +78,75 @@ export default function ReleaseTrackerApp() {
     }
   }, [storageKey]);
 
+  /* Persist data */
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(releases));
   }, [releases, storageKey]);
 
+  /* Add / Update */
   const saveRelease = () => {
-    if (!form.name.trim()) return alert("Release Name is required.");
-    if (!form.product.trim()) return alert("Product / App is required.");
-    if (!form.date) return alert("Release Date is required.");
-    if (!form.type) return alert("Release Type is required.");
+  // ---- Mandatory field validation ----
+  if (!form.name.trim()) {
+    alert("Release Name is required.");
+    return;
+  }
 
-    const releaseYear = new Date(form.date).getFullYear();
-    if (releaseYear !== selectedYear) {
-      return alert(`Release Date must be within ${selectedYear}.`);
-    }
+  if (!form.product.trim()) {
+    alert("Product / App is required.");
+    return;
+  }
 
-    const normalizedName = form.name.trim().toLowerCase();
-    const duplicate = releases.some(
-      r => r.name.trim().toLowerCase() === normalizedName && r.id !== editingRelease?.id
+  if (!form.date) {
+    alert("Release Date is required.");
+    return;
+  }
+
+  if (!form.type) {
+    alert("Release Type is required.");
+    return;
+  }
+
+  // ---- Year validation ----
+  const releaseYear = new Date(form.date).getFullYear();
+  if (releaseYear !== selectedYear) {
+    alert(`Release Date must be within the selected year (${selectedYear}).`);
+    return;
+  }
+
+  // ---- Duplicate name validation (existing) ----
+  const normalizedName = form.name.trim().toLowerCase();
+  const duplicate = releases.some(r =>
+    r.name.trim().toLowerCase() === normalizedName &&
+    r.id !== editingRelease?.id
+  );
+
+  if (duplicate) {
+    alert("A release with this name already exists for this year.");
+    return;
+  }
+
+  // ---- Save logic (unchanged) ----
+  if (editingRelease) {
+    setReleases(prev =>
+      prev.map(r =>
+        r.id === editingRelease.id ? { ...editingRelease, ...form } : r
+      )
     );
+    setEditingRelease(null);
+  } else {
+    setReleases(prev => [...prev, { ...form, id: Date.now() }]);
+  }
 
-    if (duplicate) return alert("Duplicate release name.");
+  setForm({ name: "", product: "", date: "", type: "" });
+};
 
-    if (editingRelease) {
-      setReleases(prev =>
-        prev.map(r => (r.id === editingRelease.id ? { ...editingRelease, ...form } : r))
-      );
-      setEditingRelease(null);
-    } else {
-      setReleases(prev => [...prev, { ...form, id: Date.now() }]);
-    }
-
-    setForm({ name: "", product: "", date: "", type: "" });
-  };
 
   const deleteRelease = (id: number) => {
-    if (!window.confirm("Delete this release?")) return;
+    if (!window.confirm("Are you sure you want to delete this release?")) return;
     setReleases(prev => prev.filter(r => r.id !== id));
   };
 
+  /* Filtering */
   const baseFiltered = releases.filter(r => {
     if (new Date(r.date).getFullYear() !== selectedYear) return false;
     if (productFilter && !r.product.toLowerCase().includes(productFilter.toLowerCase())) return false;
@@ -133,15 +165,6 @@ export default function ReleaseTrackerApp() {
   }, {});
 
   const totalYearCount = baseFiltered.length;
-
-  /* ======================
-     (RENDER CONTINUES)
-     ====================== */
-
-  // ⬇️ Everything below this point is IDENTICAL
-  // except `color: getContrastingTextColor(rt.color)`
-  // applied wherever background: rt.color is used.
-}
 
   const exportYearToExcel = () => {
     const header = "Release Name,Product,Date,Year,Month,Release Type\n";
@@ -373,7 +396,7 @@ export default function ReleaseTrackerApp() {
               </div>
             ))}
           </div>
-           {/* =====================
+   {/* =====================
    PRODUCT RELEASE MIX
    ===================== */}
 <h2 style={{ marginTop: 32 }}>Product Release Mix</h2>
