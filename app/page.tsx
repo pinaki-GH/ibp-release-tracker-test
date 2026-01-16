@@ -161,11 +161,11 @@ export default function ReleaseTrackerApp() {
   });
 
   const filteredReleases = baseFiltered.filter(r => {
-    if (typeFilter.length && !typeFilter.includes(r.type)) return false;
-    if (statusFilter && r.status !== statusFilter) return false; 
-    if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
-    return true;
-  });
+  if (typeFilter.length && !typeFilter.includes(r.type)) return false;
+  if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
+  if (statusFilter && r.status !== statusFilter) return false;
+  return true;
+});
 
   const releaseTypeCounts = baseFiltered.reduce<Record<string, number>>((acc, r) => {
     acc[r.type] = (acc[r.type] || 0) + 1;
