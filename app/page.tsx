@@ -144,7 +144,7 @@ export default function ReleaseTrackerApp() {
     setReleases(prev => [...prev, { ...form, id: Date.now() }]);
   }
 
-  setForm({ name: "", product: "", date: "", type: "", status: "completed" });
+  setForm({ name: "", product: "", date: "", type: "", status: "planned" });
 };
 
 
@@ -194,12 +194,12 @@ export default function ReleaseTrackerApp() {
      FORM HELPERS (NEW)
      ====================== */
   const clearForm = () => {
-    setForm({ name: "", product: "", date: "", type: "" });
+    setForm({ name: "", product: "", date: "", type: "", status: "planned" });
   };
 
   const discardEdit = () => {
     setEditingRelease(null);
-    setForm({ name: "", product: "", date: "", type: "" });
+    setForm({ name: "", product: "", date: "", type: "", status: "planned" });
   };
    
   /* ======================
