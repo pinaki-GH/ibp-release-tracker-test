@@ -58,7 +58,7 @@ export default function ReleaseTrackerApp() {
     product: "",
     date: "",
     type: "",
-    status: "planned" | "completed"; 
+    status: "planned" as "planned" | "completed" 
   });
 
   const [productFilter, setProductFilter] = useState("");
