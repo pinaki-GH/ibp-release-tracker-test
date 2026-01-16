@@ -362,7 +362,7 @@ export default function ReleaseTrackerApp() {
           {releaseStatuses.map(rs => (
             <button
               key={rs.id}
-              onClick={() => setStatusFilter(p => (p === rs.id ? null : rs.id))}
+              onClick={() => setStatusFilter(p => (p === rs.id ? null : (rs.id as "planned" | "completed")))}
               style={{
                 background: rs.color,
                 color: "#fff",
