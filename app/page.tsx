@@ -73,17 +73,22 @@ export default function ReleaseTrackerApp() {
 
   /* Load data */
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      try {
-        setReleases(JSON.parse(stored));
-      } catch {
-        setReleases([]);
-      }
-    } else {
+  const stored = localStorage.getItem(storageKey);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as any[];
+      const normalized: ReleaseItem[] = parsed.map(r => ({
+        ...r,
+        status: r.status ?? "planned" // ✅ default
+      }));
+      setReleases(normalized);
+    } catch {
       setReleases([]);
     }
-  }, [storageKey]);
+  } else {
+    setReleases([]);
+  }
+}, [storageKey]);
 
   /* Persist data */
   useEffect(() => {
@@ -163,7 +168,7 @@ export default function ReleaseTrackerApp() {
   const filteredReleases = baseFiltered.filter(r => {
   if (typeFilter.length && !typeFilter.includes(r.type)) return false;
   if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
-  if (statusFilter && r.status !== statusFilter) return false;
+  if (statusFilter && (r.status ?? "planned") !== statusFilter) return false;
   return true;
 });
 
