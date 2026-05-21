@@ -3,560 +3,472 @@
 import { useState, useEffect } from "react";
 
 /* -----------------------------
-   Static reference data
+Static reference data
 ------------------------------ */
 const releaseTypes = [
-  { id: "new-feature", name: "New Feature", color: "#2563EB" },
-  { id: "enhancement", name: "Enhancement", color: "#7C3AED" },
-  { id: "bug-fix", name: "Bug Fix", color: "#DC2626" },
-  { id: "dap-migration", name: "DAP Migration", color: "#0D9488" },
-  { id: "retirement", name: "Retirement", color: "#374151" },
-  { id: "platform-req", name: "Platform Requirement", color: "#F59E0B" },
-  { id: "technical-debt", name: "Technical Debt", color: "#9333EA" }
+{ id: "new-feature", name: "New Feature", color: "#2563EB" },
+{ id: "enhancement", name: "Enhancement", color: "#7C3AED" },
+{ id: "bug-fix", name: "Bug Fix", color: "#DC2626" },
+{ id: "dap-migration", name: "DAP Migration", color: "#0D9488" },
+{ id: "retirement", name: "Retirement", color: "#374151" },
+{ id: "platform-req", name: "Platform Requirement", color: "#F59E0B" },
+{ id: "technical-debt", name: "Technical Debt", color: "#1E3A8A" }
 ];
 
 const releaseStatuses = [
-  { id: "planned", name: "Planned", color: "#9CA3AF" },
-  { id: "completed", name: "Completed", color: "#16A34A" }
+{ id: "planned", name: "Planned", color: "#9CA3AF" },
+{ id: "completed", name: "Completed", color: "#16A34A" }
 ];
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+"January", "February", "March", "April", "May", "June",
+"July", "August", "September", "October", "November", "December"
 ];
 
 interface ReleaseItem {
-  id: number;
-  name: string;
-  product: string;
-  date: string;
-  type: string;
-  status: "planned" | "completed"; 
+id: number;
+name: string;
+product: string;
+plannedDate: string;
+actualDate?: string;
+type: string;
+status: "planned" | "completed";
 }
 
 /* ======================
-   AUTO TEXT CONTRAST
-   ====================== */
+AUTO TEXT CONTRAST
+====================== */
 const getContrastingTextColor = (bgColor: string) => {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 160 ? "#000000" : "#FFFFFF";
+const hex = bgColor.replace("#", "");
+const r = parseInt(hex.substring(0, 2), 16);
+const g = parseInt(hex.substring(2, 4), 16);
+const b = parseInt(hex.substring(4, 6), 16);
+const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+return brightness > 160 ? "#000000" : "#FFFFFF";
 };
 
 export default function ReleaseTrackerApp() {
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+const currentYear = new Date().getFullYear();
+const [selectedYear, setSelectedYear] = useState<number>(currentYear);
 
-  const [releases, setReleases] = useState<ReleaseItem[]>([]);
-  const [editingRelease, setEditingRelease] = useState<ReleaseItem | null>(null);
+const [releases, setReleases] = useState<ReleaseItem[]>([]);
+const [editingRelease, setEditingRelease] = useState<ReleaseItem | null>(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    product: "",
-    date: "",
-    type: "",
-    status: "planned" as "planned" | "completed" 
-  });
-
-  const [productFilter, setProductFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"planned" | "completed" | null>(null); 
-  const [monthFilter, setMonthFilter] = useState<number | null>(null);
-
-  /* ✅ NEW: View toggle */
-  const [viewMode, setViewMode] = useState<"tracker" | "executive">("tracker");
-
-  const storageKey = `releaseTracker:${selectedYear}`;
-
-  /* Load data */
-  useEffect(() => {
-  const stored = localStorage.getItem(storageKey);
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored) as any[];
-      const normalized: ReleaseItem[] = parsed.map(r => ({
-        ...r,
-        status: r.status ?? "planned" // ✅ default
-      }));
-      setReleases(normalized);
-    } catch {
-      setReleases([]);
-    }
-  } else {
-    setReleases([]);
-  }
-}, [storageKey]);
-
-  /* Persist data */
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(releases));
-  }, [releases, storageKey]);
-
-  /* Add / Update */
-  const saveRelease = () => {
-  // ---- Mandatory field validation ----
-  if (!form.name.trim()) {
-    alert("Release Name is required.");
-    return;
-  }
-
-  if (!form.product.trim()) {
-    alert("Product / App is required.");
-    return;
-  }
-
-  if (!form.date) {
-    alert("Release Date is required.");
-    return;
-  }
-
-  if (!form.type) {
-    alert("Release Type is required.");
-    return;
-  }
-
-  // ---- Year validation ----
-  const releaseYear = new Date(form.date).getFullYear();
-  if (releaseYear !== selectedYear) {
-    alert(`Release Date must be within the selected year (${selectedYear}).`);
-    return;
-  }
-
-  // ---- Duplicate name validation (existing) ----
-  const normalizedName = form.name.trim().toLowerCase();
-  const duplicate = releases.some(r =>
-    r.name.trim().toLowerCase() === normalizedName &&
-    r.id !== editingRelease?.id
-  );
-
-  if (duplicate) {
-    alert("A release with this name already exists for this year.");
-    return;
-  }
-
-  // ---- Save logic (unchanged) ----
-  if (editingRelease) {
-    setReleases(prev =>
-      prev.map(r =>
-        r.id === editingRelease.id ? { ...editingRelease, ...form } : r
-      )
-    );
-    setEditingRelease(null);
-  } else {
-    setReleases(prev => [...prev, { ...form, id: Date.now() }]);
-  }
-
-  setForm({ name: "", product: "", date: "", type: "", status: "planned" });
-};
-
-
-  const deleteRelease = (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this release?")) return;
-    setReleases(prev => prev.filter(r => r.id !== id));
-  };
-
-  /* Filtering */
-  const baseFiltered = releases.filter(r => {
-    if (new Date(r.date).getFullYear() !== selectedYear) return false;
-    if (productFilter && !r.product.toLowerCase().includes(productFilter.toLowerCase())) return false;
-    return true;
-  });
-
-  const filteredReleases = baseFiltered.filter(r => {
-  if (typeFilter.length && !typeFilter.includes(r.type)) return false;
-  if (monthFilter !== null && new Date(r.date).getMonth() !== monthFilter) return false;
-  if (statusFilter && (r.status ?? "planned") !== statusFilter) return false;
-  return true;
+const [form, setForm] = useState({
+name: "",
+product: "",
+plannedDate: "",
+actualDate: "",
+type: "",
+status: "planned" as "planned" | "completed"
 });
 
-  const releaseTypeCounts = baseFiltered.reduce<Record<string, number>>((acc, r) => {
-    acc[r.type] = (acc[r.type] || 0) + 1;
-    return acc;
-  }, {});
+const [productFilter, setProductFilter] = useState("");
+const [typeFilter, setTypeFilter] = useState<string[]>([]);
+const [statusFilter, setStatusFilter] = useState<"planned" | "completed" | null>(null);
+const [monthFilter, setMonthFilter] = useState<number | null>(null);
 
-  const totalYearCount = baseFiltered.length;
+const [viewMode, setViewMode] = useState<"tracker" | "executive">("tracker");
 
-  const exportYearToExcel = () => {
-  const header =
-    "Release Name,Product,Date,Year,Month,Release Type,Release Status\n";
+const storageKey = `releaseTracker:${selectedYear}`;
 
-  const rows = baseFiltered
-    .map(r => {
-      const d = new Date(r.date);
-      const month = MONTHS[d.getMonth()];
-      const typeName =
-        releaseTypes.find(t => t.id === r.type)?.name || r.type;
-      const statusName =
-        r.status === "completed" ? "Completed" : "Planned";
+useEffect(() => {
+const stored = localStorage.getItem(storageKey);
 
-      return `"${r.name}","${r.product}","${r.date}","${selectedYear}","${month}","${typeName}","${statusName}"`;
-    })
-    .join("\n");
+```
+if (stored) {
+  try {
+    const parsed = JSON.parse(stored) as any[];
 
-  const blob = new Blob([header + rows], {
-    type: "text/csv;charset=utf-8;"
-  });
+    const normalized: ReleaseItem[] = parsed.map(r => ({
+      ...r,
+      plannedDate: r.plannedDate ?? r.date ?? "",
+      actualDate:
+        r.actualDate ??
+        (r.status === "completed" ? r.date ?? "" : ""),
+      status: r.status ?? "planned"
+    }));
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `IBP_Release_Tracker_${selectedYear}.csv`;
-  link.click();
+    setReleases(normalized);
+  } catch {
+    setReleases([]);
+  }
+} else {
+  setReleases([]);
+}
+```
+
+}, [storageKey]);
+
+useEffect(() => {
+localStorage.setItem(storageKey, JSON.stringify(releases));
+}, [releases, storageKey]);
+
+const getReleaseDisplayDate = (release: ReleaseItem) => {
+return release.status === "completed"
+? release.actualDate || release.plannedDate
+: release.plannedDate;
 };
 
-   
-/* ======================
-     FORM HELPERS (NEW)
-     ====================== */
-  const clearForm = () => {
-    setForm({ name: "", product: "", date: "", type: "", status: "planned" });
-  };
+const saveRelease = () => {
+if (!form.name.trim()) {
+alert("Release Name is required.");
+return;
+}
 
-  const discardEdit = () => {
-    setEditingRelease(null);
-    setForm({ name: "", product: "", date: "", type: "", status: "planned" });
-  };
-   
-  /* ======================
-     EXECUTIVE SUMMARY DATA
-     ====================== */
-  const executiveSummary = MONTHS.map((month, idx) => {
-    const items = baseFiltered.filter(r => new Date(r.date).getMonth() === idx);
-    const total = items.length;
+```
+if (!form.product.trim()) {
+  alert("Product / App is required.");
+  return;
+}
 
-    const byType = releaseTypes
-      .map(rt => {
-        const count = items.filter(r => r.type === rt.id).length;
-        return {
-          ...rt,
-          count,
-          percent: total ? Math.round((count / total) * 100) : 0
-        };
-      })
-      .filter(t => t.count > 0);
+if (!form.plannedDate) {
+  alert("Planned Release Date is required.");
+  return;
+}
 
-    return { month, total, byType };
-  });
+if (form.status === "completed" && !form.actualDate) {
+  alert("Actual Release Date is required for completed releases.");
+  return;
+}
 
-  return (
-    <div style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
-      <h1>IBP Release Tracker</h1>
+if (!form.type) {
+  alert("Release Type is required.");
+  return;
+}
 
-      {/* View Toggle */}
-      <div style={{ marginBottom: 16 }}>
-        <button disabled={viewMode === "tracker"} onClick={() => setViewMode("tracker")}>
-          Tracker View
-        </button>
-        <button
-          disabled={viewMode === "executive"}
-          onClick={() => setViewMode("executive")}
-          style={{ marginLeft: 8 }}
+const validationDate =
+  form.status === "completed"
+    ? form.actualDate
+    : form.plannedDate;
+
+const releaseYear = new Date(validationDate).getFullYear();
+
+if (releaseYear !== selectedYear) {
+  alert(`Release Date must be within the selected year (${selectedYear}).`);
+  return;
+}
+
+const normalizedName = form.name.trim().toLowerCase();
+
+const duplicate = releases.some(
+  r =>
+    r.name.trim().toLowerCase() === normalizedName &&
+    r.id !== editingRelease?.id
+);
+
+if (duplicate) {
+  alert("A release with this name already exists for this year.");
+  return;
+}
+
+if (editingRelease) {
+  setReleases(prev =>
+    prev.map(r =>
+      r.id === editingRelease.id
+        ? {
+            ...editingRelease,
+            ...form
+          }
+        : r
+    )
+  );
+
+  setEditingRelease(null);
+} else {
+  setReleases(prev => [...prev, { ...form, id: Date.now() }]);
+}
+
+setForm({
+  name: "",
+  product: "",
+  plannedDate: "",
+  actualDate: "",
+  type: "",
+  status: "planned"
+});
+```
+
+};
+
+const deleteRelease = (id: number) => {
+if (!window.confirm("Are you sure you want to delete this release?")) return;
+setReleases(prev => prev.filter(r => r.id !== id));
+};
+
+const baseFiltered = releases.filter(r => {
+const releaseDate = getReleaseDisplayDate(r);
+
+```
+if (new Date(releaseDate).getFullYear() !== selectedYear) return false;
+
+if (
+  productFilter &&
+  !r.product.toLowerCase().includes(productFilter.toLowerCase())
+)
+  return false;
+
+return true;
+```
+
+});
+
+const filteredReleases = baseFiltered.filter(r => {
+const releaseDate = getReleaseDisplayDate(r);
+
+```
+if (typeFilter.length && !typeFilter.includes(r.type)) return false;
+
+if (
+  monthFilter !== null &&
+  new Date(releaseDate).getMonth() !== monthFilter
+)
+  return false;
+
+if (statusFilter && (r.status ?? "planned") !== statusFilter)
+  return false;
+
+return true;
+```
+
+});
+
+const releaseTypeCounts = baseFiltered.reduce<Record<string, number>>(
+(acc, r) => {
+acc[r.type] = (acc[r.type] || 0) + 1;
+return acc;
+},
+{}
+);
+
+const totalYearCount = baseFiltered.length;
+
+const exportYearToExcel = () => {
+const header =
+"Release Name,Product,Planned Release Date,Actual Release Date,Year,Month,Release Type,Release Status\n";
+
+```
+const rows = baseFiltered
+  .map(r => {
+    const releaseDate = getReleaseDisplayDate(r);
+    const d = new Date(releaseDate);
+    const month = MONTHS[d.getMonth()];
+
+    const typeName =
+      releaseTypes.find(t => t.id === r.type)?.name || r.type;
+
+    const statusName =
+      r.status === "completed" ? "Completed" : "Planned";
+
+    return `"${r.name}","${r.product}","${r.plannedDate}","${r.actualDate || ""}","${selectedYear}","${month}","${typeName}","${statusName}"`;
+  })
+  .join("\n");
+
+const blob = new Blob([header + rows], {
+  type: "text/csv;charset=utf-8;"
+});
+
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = `IBP_Release_Tracker_${selectedYear}.csv`;
+link.click();
+```
+
+};
+
+const clearForm = () => {
+setForm({
+name: "",
+product: "",
+plannedDate: "",
+actualDate: "",
+type: "",
+status: "planned"
+});
+};
+
+const discardEdit = () => {
+setEditingRelease(null);
+
+```
+setForm({
+  name: "",
+  product: "",
+  plannedDate: "",
+  actualDate: "",
+  type: "",
+  status: "planned"
+});
+```
+
+};
+
+const executiveSummary = MONTHS.map((month, idx) => {
+const items = baseFiltered.filter(r => {
+const releaseDate = getReleaseDisplayDate(r);
+return new Date(releaseDate).getMonth() === idx;
+});
+
+```
+const total = items.length;
+
+const byType = releaseTypes
+  .map(rt => {
+    const count = items.filter(r => r.type === rt.id).length;
+
+    return {
+      ...rt,
+      count,
+      percent: total ? Math.round((count / total) * 100) : 0
+    };
+  })
+  .filter(t => t.count > 0);
+
+return { month, total, byType };
+```
+
+});
+
+return (
+<div style={{ padding: 24, fontFamily: "Arial, sans-serif" }}> <h1>IBP Release Tracker</h1>
+
+```
+  <div style={{ marginBottom: 16 }}>
+    <button
+      disabled={viewMode === "tracker"}
+      onClick={() => setViewMode("tracker")}
+    >
+      Tracker View
+    </button>
+
+    <button
+      disabled={viewMode === "executive"}
+      onClick={() => setViewMode("executive")}
+      style={{ marginLeft: 8 }}
+    >
+      Executive View
+    </button>
+  </div>
+
+  {viewMode === "tracker" && (
+    <>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16
+        }}
+      >
+        <strong>Year:</strong>
+
+        <select
+          value={selectedYear}
+          onChange={e => setSelectedYear(Number(e.target.value))}
         >
-          Executive View
-        </button>
-      </div>
-
-      {/* =====================
-         TRACKER VIEW (INTACT)
-         ===================== */}
-      {viewMode === "tracker" && (
-        <>
-          {/* Year + Export */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <strong>Year:</strong>
-            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
-              {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button onClick={exportYearToExcel}>Export Year to Excel</button>
-          </div>
-
-          {/* Add / Edit */}
-          <div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "2fr 2fr 1.2fr 1.5fr 1fr 1fr",
-    gap: 8,
-    marginBottom: 24,
-    alignItems: "center"
-  }}
->
-
-            <input placeholder="Release Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-            <input placeholder="Product / App" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })} />
-            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-            <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-              <option value="">Release Type</option>
-              {releaseTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.name}</option>)}
-            </select>
-
-            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as any })}>
-              {releaseStatuses.map(rs => (
-               <option key={rs.id} value={rs.id}>{rs.name}</option>
+          {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(y => (
+            <option key={y} value={y}>
+              {y}
+            </option>
           ))}
         </select>
-             
-             <button onClick={saveRelease}>
-  {editingRelease ? "Update" : "Add"}
-</button>
 
-{editingRelease ? (
-  <button
-    onClick={discardEdit}
-    style={{ background: "#f3f4f6" }}
-  >
-    Discard
-  </button>
-) : (
-  <button
-    onClick={clearForm}
-    style={{ background: "#f3f4f6" }}
-  >
-    Clear
-  </button>
-)}
-
-          </div>
-
-          {/* Legend */}
-<div style={{ marginBottom: 16 }}>
-  <strong>
-  Release Type Legend — Total releases: {totalYearCount}
-</strong>
-
-  <button onClick={() => setTypeFilter([])} style={{ marginLeft: 12 }}>
-    Clear Release Type Filter
-  </button>
-
-  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-    {releaseTypes.map(rt => {
-      const isSelected = typeFilter.includes(rt.id);
-
-      return (
-        <button
-          key={rt.id}
-          onClick={() =>
-            setTypeFilter(p =>
-              p.includes(rt.id) ? p.filter(t => t !== rt.id) : [...p, rt.id]
-            )
-          }
-          style={{
-            background: rt.color,
-            color: getContrastingTextColor(rt.color),
-            padding: "4px 8px",
-            border: isSelected ? "3px solid #000" : "1px solid #ccc",
-            boxShadow: isSelected ? "0 0 0 2px rgba(0,0,0,0.15)" : "none",
-            transform: isSelected ? "scale(1.05)" : "scale(1)",
-            transition: "all 0.15s ease"
-          }}
-        >
-          {rt.name} ({releaseTypeCounts[rt.id] || 0})
+        <button onClick={exportYearToExcel}>
+          Export Year to Excel
         </button>
-      );
-    })}
-  </div>
-</div>
-
-
-          {/* Filters */}
-          <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-            <input placeholder="Filter by product" value={productFilter} onChange={e => setProductFilter(e.target.value)} />
-            {productFilter && <button onClick={() => setProductFilter("")}>×</button>}
-            <select value={monthFilter ?? ""} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">Filter by month</option>
-              {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-            </select>
-            {monthFilter !== null && <button onClick={() => setMonthFilter(null)}>Clear Month</button>}
-          </div>
-
-           {/* Status Filter */}
-      <div style={{ marginBottom: 16 }}>
-        <strong>Release Status</strong>
-        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-          {releaseStatuses.map(rs => (
-            <button
-              key={rs.id}
-              onClick={() => setStatusFilter(p => (p === rs.id ? null : (rs.id as "planned" | "completed")))}
-              style={{
-                background: rs.color,
-                color: "#fff",
-                border: statusFilter === rs.id ? "3px solid #000" : "1px solid #ccc",
-                padding: "4px 8px"
-              }}
-            >
-              {rs.name}
-            </button>
-          ))}
-        </div>
       </div>
 
-         {/* Results */}
-          {monthFilter !== null ? (
-            <div>
-              <h3>{MONTHS[monthFilter]} {selectedYear}</h3>
-              {filteredReleases.map(r => {
-                const rt = releaseTypes.find(t => t.id === r.type);
-                return (
-                  <div key={r.id} style={{ background: rt?.color, color: rt ? getContrastingTextColor(rt.color) : "#000", padding: 8, marginTop: 6, border: "1px solid #ccc" }}>
-                    <strong>{r.name}</strong>
-                    <div style={{ fontSize: 12 }}>{r.product} • {r.date} • {rt?.name}</div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                      <button style={{ fontSize: 12 }} onClick={() => { setEditingRelease(r); setForm(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
-                      <button style={{ fontSize: 12, color: "red" }} onClick={() => deleteRelease(r.id)}>Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-              {MONTHS.map((month, index) => (
-                <div key={month} style={{ border: "1px solid #ccc", padding: 12 }}>
-                  <strong>{month} {selectedYear}</strong>
-                  {filteredReleases.filter(r => new Date(r.date).getMonth() === index).map(r => {
-                    const rt = releaseTypes.find(t => t.id === r.type);
-                    return (
-                      <div key={r.id} style={{ background: rt?.color, color: rt ? getContrastingTextColor(rt.color) : "#000", padding: 6, marginTop: 6 }}>
-                        <strong>{r.name}</strong>
-                        <div style={{ fontSize: 12 }}>{r.product} • {r.date}</div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                          <button style={{ fontSize: 12 }} onClick={() => { setEditingRelease(r); setForm(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
-                          <button style={{ fontSize: 12, color: "red" }} onClick={() => deleteRelease(r.id)}>Delete</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 2fr 1.3fr 1.3fr 1.5fr 1.2fr 1fr 1fr",
+          gap: 8,
+          marginBottom: 24,
+          alignItems: "center"
+        }}
+      >
+        <input
+          placeholder="Release Name"
+          value={form.name}
+          onChange={e => setForm({ ...form, name: e.target.value })}
+        />
 
-      {/* =====================
-         EXECUTIVE VIEW (% BAR)
-         ===================== */}
-      {viewMode === "executive" && (
-        <>
-          <h2>Monthly Executive Summary</h2>
+        <input
+          placeholder="Product / App"
+          value={form.product}
+          onChange={e => setForm({ ...form, product: e.target.value })}
+        />
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-            {executiveSummary.map(m => (
-              <div key={m.month} style={{ border: "1px solid #ccc", padding: 12 }}>
-                <strong>{m.month}</strong>
-                <div>Total Releases: {m.total}</div>
+        <input
+          type="date"
+          value={form.plannedDate}
+          onChange={e =>
+            setForm({ ...form, plannedDate: e.target.value })
+          }
+        />
 
-                {m.byType.map(t => (
-                  <div key={t.id} style={{ marginTop: 6 }}>
-                    <div style={{ fontSize: 12 }}>
-                      {t.name}: {t.count} ({t.percent}%)
-                    </div>
-                    <div style={{ background: "#eee", height: 8 }}>
-                      <div
-                        style={{
-                          width: `${t.percent}%`,
-                          height: "100%",
-                          background: t.color
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-   {/* =====================
-   PRODUCT RELEASE MIX
-   ===================== */}
-<h2 style={{ marginTop: 32 }}>Product Release Mix</h2>
+        <input
+          type="date"
+          value={form.actualDate}
+          disabled={form.status !== "completed"}
+          onChange={e =>
+            setForm({ ...form, actualDate: e.target.value })
+          }
+        />
 
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 16
-  }}
->
-  {(() => {
-    const products = Array.from(new Set(baseFiltered.map(r => r.product)));
-
-    return products.map(product => {
-      const productReleases = baseFiltered.filter(r => r.product === product);
-      const total = productReleases.length;
-
-      if (total === 0) return null;
-
-      const byType = releaseTypes
-        .map(rt => {
-          const count = productReleases.filter(r => r.type === rt.id).length;
-          const percent = Math.round((count / total) * 100);
-          return { ...rt, count, percent };
-        })
-        .filter(t => t.count > 0);
-
-      return (
-        <div
-          key={product}
-          style={{
-            border: "1px solid #ccc",
-            padding: 12
-          }}
+        <select
+          value={form.type}
+          onChange={e => setForm({ ...form, type: e.target.value })}
         >
-          <strong>{product}</strong>
-          <div style={{ fontSize: 12, marginBottom: 6 }}>
-            Total Releases: {total}
-          </div>
+          <option value="">Release Type</option>
 
-          {/* Stacked bar */}
-          <div
-            style={{
-              display: "flex",
-              height: 16,
-              width: "100%",
-              border: "1px solid #ddd",
-              overflow: "hidden"
-            }}
+          {releaseTypes.map(rt => (
+            <option key={rt.id} value={rt.id}>
+              {rt.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={form.status}
+          onChange={e =>
+            setForm({
+              ...form,
+              status: e.target.value as "planned" | "completed",
+              actualDate:
+                e.target.value === "planned" ? "" : form.actualDate
+            })
+          }
+        >
+          {releaseStatuses.map(rs => (
+            <option key={rs.id} value={rs.id}>
+              {rs.name}
+            </option>
+          ))}
+        </select>
+
+        <button onClick={saveRelease}>
+          {editingRelease ? "Update" : "Add"}
+        </button>
+
+        {editingRelease ? (
+          <button
+            onClick={discardEdit}
+            style={{ background: "#f3f4f6" }}
           >
-            {byType.map(t => (
-              <div
-                key={t.id}
-                title={`${t.name}: ${t.count} (${t.percent}%)`}
-                style={{
-                  width: `${t.percent}%`,
-                  background: t.color
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Legend */}
-          <div style={{ fontSize: 12, marginTop: 6 }}>
-            {byType.map(t => (
-              <span key={t.id} style={{ marginRight: 12 }}>
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 10,
-                    height: 10,
-                    background: t.color,
-                    marginRight: 4
-                  }}
-                />
-                {t.name}: {t.count} ({t.percent}%)
-              </span>
-            ))}
-          </div>
-        </div>
-      );
-    });
-  })()}
+            Discard
+          </button>
+        ) : (
+          <button
+            onClick={clearForm}
+            style={{ background: "#f3f4f6" }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </>
+  )}
 </div>
-
-        </>
-      )}
-    </div>
-  );
+);
 }
